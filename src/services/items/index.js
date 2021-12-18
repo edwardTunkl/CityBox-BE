@@ -3,8 +3,20 @@ import mongoose from "mongoose";
 import createHttpError from "http-errors";
 import ItemSchema from "./schema.js";
 import RequestSchema from "../requests/schema.js";
+import multer from "multer"
+import { v2 as cloudinary } from "cloudinary"
+import { CloudinaryStorage } from "multer-storage-cloudinary"
+
 
 const itemRouter = express.Router();
+
+const cloudStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+      folder: "itemPicture",
+  },
+})
+
 
 //---POST item---
 
@@ -21,6 +33,25 @@ itemRouter.post("/:userId", async (req, res, next) => {
   }
 });
 
+//POST picture with item---
+
+itemRouter.post("/:itemId/picture", multer({ storage: cloudStorage }).single("itemPic"), async (req, res, next) => {
+  try {
+      const itemId = mongoose.Types.ObjectId(req.params.itemId)
+      const modifiedItem = await ItemSchema.findByIdAndUpdate(itemId, { $set: { file: req.file.path } }, {
+          new: true,
+      })
+
+      if (modifiedItem) {
+          res.send(modifiedItem)
+      } else {
+          next(createHttpError(404, `item with id ${itemId} not found!`))
+      }
+  } catch (error) {
+      next(error)
+  }
+})
+
 //---GET items---
 
 itemRouter.get("/", async (req, res, next) => {
@@ -32,16 +63,16 @@ itemRouter.get("/", async (req, res, next) => {
     let item;
 
     if (!category && !type && !model && !brand) {
-      item = await ItemSchema.find({});
+      item = await ItemSchema.find({}).populate('user')
     } else {
       item = await ItemSchema.find({
         $or: [
-          { category: category },
-          { type: type },
-          { model: model },
-          { brand: brand },
+          { category: new RegExp(category, 'i') },
+          { type: new RegExp(type, 'i') },
+          { model: new RegExp(model, 'i') },
+          { brand:new RegExp(brand, 'i') },
         ],
-      });
+      }).populate('user');
     }
     res.status(200).send(item);
   } catch (error) {
@@ -54,6 +85,22 @@ itemRouter.get("/", async (req, res, next) => {
 itemRouter.get("/:id", async (req, res, next) => {
   try {
     const item = await ItemSchema.findById(req.params.id);
+
+    if (item) {
+      res.send(item);
+    } else {
+      next(createHttpError(404, `Item not found`));
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+//---GET item by UserID---
+
+itemRouter.get("/user/:id", async (req, res, next) => {
+  try {
+    const item = await ItemSchema.find({user: req.params.id});
 
     if (item) {
       res.send(item);

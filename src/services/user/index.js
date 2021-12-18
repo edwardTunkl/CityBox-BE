@@ -66,11 +66,8 @@ userRouter.get("/me", JWTAuthMiddleware, async (req, res, next) =>{
 userRouter.put("/me", JWTAuthMiddleware, async (req, res, next) =>{
   try {
     const filter = {_id: req.user._id}
-    console.log(filter)
-    const update = {...req.body.newUserData}
-    console.log("UPDATE",update)
+    const update = {...req.body}
     const updatedUser = await UserSchema.findOneAndUpdate(filter, update, {returnNewDocument: true})
-    console.log("UPDATED USER", updatedUser)
     await updatedUser.save()
     res.send(updatedUser)
   } catch (error) {
@@ -78,12 +75,30 @@ userRouter.put("/me", JWTAuthMiddleware, async (req, res, next) =>{
   }
 })
 
+
 //---GET user by Id---
 
 userRouter.get("/:id", async(req, res, next) =>{
   try {
-    const user = await UserSchema.findById(req.params.id)
+    const user = await UserSchema.findById(req.params.id).populate("connectedUsers")
     res.send(user)
+  } catch (error) {
+    next(error)
+  }
+})
+
+//---PUT user by Id, add connectedUser ---
+
+userRouter.put("/me/add/:neighbourId", JWTAuthMiddleware, async (req, res, next) =>{
+  try {
+    const filter = {_id: req.user._id}
+    console.log("THIS IS FILTER", filter)
+    const update = {$push: {connectedUsers: req.params.neighbourId}}
+    console.log("THIS IS UPDATED NEIGHBOUR",update)
+    const updatedUser = await UserSchema.findOneAndUpdate(filter, update, {returnNewDocument: true})
+    await updatedUser.save()
+    res.send(updatedUser)
+    console.log("UPDATED USER", updatedUser)
   } catch (error) {
     next(error)
   }

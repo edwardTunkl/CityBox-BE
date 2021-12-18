@@ -4,6 +4,8 @@ const { Schema, model } = mongoose;
 
 const RequestSchema = new Schema(
   {
+    timeH: { type: String, required: true, default: '-'},
+    timeM: { type: String, required: true, default: '-'},
     date: { type: Date, required: true },
     message: { type: String, required: false },
     active: {type: Boolean, required: true, default: true},
